@@ -225,6 +225,7 @@ Expense { id, concept, amount, paidBy, date, category,
 - Els conflictes es resolen amb *last write wins* per grup: si dues persones editen exactament al mateix temps, una de les dues versions pot prevaldre.
 - No hi ha comptes ni control d'accés per persona: l'enllaç és l'única credencial. No el publiquis en llocs públics.
 - Un enllaç snapshot molt gran (moltes despeses) pot superar el límit d'alguns missatgers. Amb enllaços vius (`#join=`) aquest problema desapareix.
+- El pla gratuït de Supabase **pausa** els projectes inactius després d'uns dies. Si la sincronització deixa de funcionar, reactiva el projecte des del dashboard de Supabase.
 
 Per a més seguretat, el següent pas seria xifrar el contingut al client abans de pujar-lo o afegir autenticació per grup.
 
