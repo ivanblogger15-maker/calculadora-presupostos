@@ -21,7 +21,7 @@ import {
 import { uid } from './lib/id';
 import { clearShareHash, readShareFromLocation } from './lib/share';
 import { loadState, saveState } from './lib/storage';
-import { decodeLiveInvite } from './lib/sync';
+import { decodeLiveInvite, touchGroupIfChanged } from './lib/sync';
 import { useCloudSync } from './lib/useCloudSync';
 import type { AppState, Currency, Group, Lang, Member } from './types';
 
@@ -166,11 +166,14 @@ function AppContent({ state, setState }: AppContentProps) {
   function updateGroup(groupId: string, updater: (group: Group) => Group) {
     setState((current) => ({
       ...current,
-      groups: current.groups.map((group) =>
-        group.id === groupId
-          ? { ...updater(group), updatedAt: new Date().toISOString() }
-          : group,
-      ),
+      groups: current.groups.map((group) => {
+        if (group.id !== groupId) return group;
+
+        const next = updater(group);
+        // Picking "who am I" only changes local state. Do not bump the shared
+        // timestamp (and trigger a cloud write) when nothing shared changed.
+        return touchGroupIfChanged(group, next, new Date().toISOString());
+      }),
     }));
   }
 

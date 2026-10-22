@@ -7,6 +7,7 @@ import {
   liveShareLink,
   mergeRemoteGroup,
   toCloudGroup,
+  touchGroupIfChanged,
 } from './sync';
 
 const group: Group = {
@@ -45,6 +46,21 @@ describe('mergeRemoteGroup', () => {
   it('clears the identity when the member was removed', () => {
     const remote = { ...group, members: [{ id: 'm1', name: 'Laia' }] };
     expect(mergeRemoteGroup(remote, 'm2').currentMemberId).toBeNull();
+  });
+});
+
+describe('touchGroupIfChanged', () => {
+  it('does not bump the shared timestamp for a local-only identity change', () => {
+    const next = { ...group, currentMemberId: 'm2' };
+    const touched = touchGroupIfChanged(group, next, '2030-01-01T00:00:00.000Z');
+    expect(touched.updatedAt).toBe(group.updatedAt);
+    expect(touched.currentMemberId).toBe('m2');
+  });
+
+  it('bumps the shared timestamp when group data changes', () => {
+    const next = { ...group, name: 'Pis nou' };
+    const touched = touchGroupIfChanged(group, next, '2030-01-01T00:00:00.000Z');
+    expect(touched.updatedAt).toBe('2030-01-01T00:00:00.000Z');
   });
 });
 

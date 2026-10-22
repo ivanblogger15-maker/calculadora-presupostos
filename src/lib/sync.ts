@@ -26,6 +26,15 @@ export function mergeRemoteGroup(remote: Group, localMemberId: string | null): G
   return { ...remote, currentMemberId: keep };
 }
 
+/**
+ * Bump the shared `updatedAt` only when the shared content changed. Local-only
+ * fields (like `currentMemberId`) must not create cloud writes.
+ */
+export function touchGroupIfChanged(previous: Group, next: Group, now: string): Group {
+  if (cloudPayload(next) === cloudPayload(previous)) return next;
+  return { ...next, updatedAt: now };
+}
+
 /** Compare two ISO timestamps. Falls back to string comparison if parsing fails. */
 export function compareTimestamps(a: string, b: string): number {
   const timeA = Date.parse(a);
