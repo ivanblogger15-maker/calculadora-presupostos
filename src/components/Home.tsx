@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useI18n, useCounts } from '../i18n/I18nProvider';
 import { avatarClass, initials } from '../lib/avatar';
 import { computeBalances, totalSpentCents } from '../lib/balances';
+import { cloudEnabled } from '../lib/cloud';
 import { formatMoney } from '../lib/money';
 import type { Group } from '../types';
 import { Avatar } from './Avatar';
@@ -159,7 +160,7 @@ export function Home({ groups, onCreate, onOpen }: HomeProps) {
         <footer className="mt-14 border-t border-slate-200/70 pt-6">
           <div className="flex items-start gap-2.5 text-xs leading-relaxed text-slate-500">
             <LockIcon className="mt-0.5 h-4 w-4 shrink-0 text-teal-600" />
-            <p>{t('localOnly')}</p>
+            <p>{t(cloudEnabled ? 'cloudEnabledNote' : 'localOnly')}</p>
           </div>
           <p className="mt-3 text-xs text-slate-400">{t('footerNote')}</p>
         </footer>

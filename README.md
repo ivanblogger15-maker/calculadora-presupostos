@@ -26,16 +26,15 @@ Calculadora de **despeses compartides** per a pisos, viatges, sopars i qualsevol
 - **Algoritme de liquidació** que minimitza les transferències (vegeu [lògica](#-lògica-de-càlcul)).
 - **Registre de pagaments**: el botó *Fet* crea una liquidació i deixa els comptes a zero.
 - **Historial de despeses** agrupat per dia, amb detall del repartiment i opció d'eliminar.
-- **Enllaç per compartir** el grup sense registre (`#g=...`), amb importació al navegador de l'altra persona.
+- **Enllaç per compartir** el grup sense registre: enllaç viu (`#join=...`) amb sincronització, o foto comprimida (`#g=...`) si no hi ha núvol configurat.
 - **Tres idiomes**: català, castellà i anglès (es recorda la tria).
-- **Persistència local** a `localStorage` (sense backend, sense compte).
+- **Persistència local** a `localStorage` i **sincronització en temps real** opcional amb Supabase (Realtime + RPC).
 - **Disseny mobile-first** amb Tailwind CSS, tipografia Inter, xifres tabulars i colors semàntics (verd = et deuen, vermell = deus).
 - **Tests unitaris** de repartiment, balances, arrodoniment i liquidació.
 
 ### Properes passes (roadmap)
 
-- [ ] Backend amb Supabase/Postgres per sincronitzar el mateix grup entre dispositius.
-- [ ] Enllaços de grup persistents i en temps real (WebSockets / Supabase Realtime).
+- [ ] Resolució de conflictes més fina (ara és *last write wins* per grup).
 - [ ] Comptes d'usuari opcionals i historial compartit.
 - [ ] Despeses recurrents (lloguer, internet, subscripcions).
 - [ ] Escàner de tiquets amb OCR/IA.
@@ -85,10 +84,11 @@ Genera com a màxim `n − 1` transferències. Exemple: si A deu 10 € a B i B 
 | Build | Vite 8 |
 | Estils | Tailwind CSS 4 |
 | Tests | Vitest |
-| Compressió d'enllaços | lz-string |
+| Sincronització | Supabase (Postgres + Realtime) |
+| Enllaços snapshot | lz-string |
 | Desplegament | GitHub Actions → GitHub Pages |
 
-No hi ha backend. L'estat viu a `localStorage` i els enllaços porten una **foto comprimida** del grup.
+L'estat viu a `localStorage` i, si hi ha claus de Supabase, es sincronitza amb el núvol. Sense configuració de Supabase l'app continua funcionant en mode local i els enllaços porten una **foto comprimida** del grup.
 
 ---
 
@@ -111,14 +111,59 @@ npm run preview  # serveix la build de producció
 
 ---
 
+## ☁️ Sincronització amb Supabase
+
+La sincronització és **opcional**: si no hi ha variables d'entorn, l'app funciona només amb `localStorage` i enllaços snapshot.
+
+### 1. Crea el projecte
+
+1. Entra a [supabase.com/dashboard](https://supabase.com/dashboard) i crea un projecte gratuït (regió `eu-west-1` o `eu-central-1`).
+2. Obre **SQL Editor**, enganxa-hi el contingut de [`supabase/schema.sql`](supabase/schema.sql) i executa'l.
+3. Ves a **Project Settings → API** i copia:
+   - `Project URL`
+   - `anon public` key
+
+> La clau `anon` és pública per disseny: s'envia dins del bundle. **No facis servir mai la clau `service_role` al frontend.**
+
+### 2. Configura l'entorn local
+
+```bash
+cp .env.example .env.local
+# edita .env.local amb la URL i la clau anon
+npm run dev
+```
+
+`.env.local` està ignorat per git.
+
+### 3. Configura el desplegament
+
+Al repositori de GitHub: **Settings → Secrets and variables → Actions → New repository secret**
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
+El workflow falla si falta algun dels dos secrets, per no publicar una versió sense sincronització per accident.
+
+### Com funciona
+
+- Cada grup té un **id aleatori** que fa de capacitat: qui té l'enllaç pot llegir i escriure aquell grup.
+- La taula `groups` té RLS activat i **cap política**: el client només hi pot accedir a través de les funcions `get_group`, `save_group` i `delete_group`.
+- Els canvis es desen amb un *debounce* de 400 ms i es propaguen per **Supabase Realtime Broadcast**; cada client baixa la versió bona per RPC.
+- Hi ha *polling* de seguretat: cada 6 s amb el grup obert i cada 30 s per a la resta.
+- `currentMemberId` (qui ets tu) **no** se sincronitza: és local de cada dispositiu.
+- Els conflictes es resolen amb *last write wins* per grup.
+
+---
+
 ## 🌐 Desplegament
 
 El repositori inclou `.github/workflows/deploy.yml`. A cada `push` a `main`:
 
 1. Instal·la dependències (`npm ci`).
-2. Executa els tests.
-3. Compila el projecte.
-4. Publica `dist/` a **GitHub Pages**.
+2. Comprova que els secrets de Supabase hi siguin.
+3. Executa els tests.
+4. Compila el projecte.
+5. Publica `dist/` a **GitHub Pages**.
 
 Si és la primera vegada, cal activar Pages al repositori:
 
@@ -138,13 +183,19 @@ src/
 │   ├── balances.ts      # balances + liquidació de deutes
 │   ├── money.ts         # cèntims, format, parseig i repartiment
 │   ├── storage.ts       # persistència i validació de dades
-│   ├── share.ts         # enllaços comprimits (#g=...)
+│   ├── share.ts         # enllaços snapshot (#g=...)
+│   ├── sync.ts          # payload del núvol i enllaços vius (#join=...)
+│   ├── cloud.ts         # client Supabase i RPC
+│   ├── useCloudSync.ts  # push/pull, polling i Realtime
 │   ├── dates.ts
 │   ├── categories.ts
 │   └── avatar.ts
 ├── types.ts
 ├── App.tsx
 └── index.css
+
+supabase/
+└── schema.sql           # taula, RLS i funcions RPC
 ```
 
 ### Model de dades
@@ -156,6 +207,8 @@ Expense { id, concept, amount, paidBy, date, category,
           splitMethod, participants[], weights?, settlement? }
 ```
 
+`currentMemberId` és l'única dada **local**: indica qui ets tu en aquest dispositiu i s'exclou del payload que es puja a Supabase. Així cada persona pot triar el seu nom sense canviar el dels altres.
+
 `weights` s'interpreta segons `splitMethod`:
 
 - `exact` → imports per persona,
@@ -166,12 +219,14 @@ Expense { id, concept, amount, paidBy, date, category,
 
 ## 🔒 Privacitat i limitacions
 
-- **No hi ha servidor**: ningú no rep les dades. Viatgen només al `localStorage` del dispositiu.
-- **L'enllaç és una foto**: cada persona importa una còpia del grup. Els canvis posteriors no se sincronitzen; per veure'ls cal tornar a compartir l'enllaç.
-- Esborrar les dades del navegador esborra els grups.
-- Un enllaç molt gran (moltes despeses) pot superar el límit d'alguns missatgers. La compressió redueix molt la mida, però no és infinita.
+- **Amb Supabase configurat**, les dades del grup es desen al núvol (en text pla a Postgres). L'id aleatori de l'enllaç és la capacitat d'accés: qui el té pot veure i modificar el grup.
+- **Sense Supabase**, tot es queda al `localStorage` i els enllaços són una foto comprimida del grup.
+- Esborrar les dades del navegador esborra la còpia local; amb núvol, el grup es pot recuperar obrint de nou l'enllaç.
+- Els conflictes es resolen amb *last write wins* per grup: si dues persones editen exactament al mateix temps, una de les dues versions pot prevaldre.
+- No hi ha comptes ni control d'accés per persona: l'enllaç és l'única credencial. No el publiquis en llocs públics.
+- Un enllaç snapshot molt gran (moltes despeses) pot superar el límit d'alguns missatgers. Amb enllaços vius (`#join=`) aquest problema desapareix.
 
-Per a sincronització real i enllaços permanents, el següent pas natural és **Supabase** (Postgres + Realtime + RLS).
+Per a més seguretat, el següent pas seria xifrar el contingut al client abans de pujar-lo o afegir autenticació per grup.
 
 ---
 

@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
   type Dispatch,
   type SetStateAction,
@@ -11,9 +12,17 @@ import { Home } from './components/Home';
 import { ImportModal } from './components/ImportModal';
 import { Toast } from './components/Toast';
 import { I18nProvider, useI18n } from './i18n/I18nProvider';
+import {
+  broadcastGroupChanged,
+  cloudEnabled,
+  fetchCloudGroup,
+  removeCloudGroup,
+} from './lib/cloud';
 import { uid } from './lib/id';
 import { clearShareHash, readShareFromLocation } from './lib/share';
 import { loadState, saveState } from './lib/storage';
+import { decodeLiveInvite } from './lib/sync';
+import { useCloudSync } from './lib/useCloudSync';
 import type { AppState, Currency, Group, Lang, Member } from './types';
 
 interface ToastState {
@@ -51,13 +60,44 @@ function AppContent({ state, setState }: AppContentProps) {
   const [createOpen, setCreateOpen] = useState(false);
   const [pendingImport, setPendingImport] = useState<Group | null>(null);
   const [importFailed, setImportFailed] = useState(false);
+  const [joining, setJoining] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const syncErrorAt = useRef(0);
 
   const notify = useCallback((message: string) => {
     setToast({ id: Date.now() + Math.random(), message });
   }, []);
 
+  const handleRemoteDelete = useCallback(
+    (groupId: string) => {
+      setActiveGroupId((current) => (current === groupId ? null : current));
+      notify(t('cloudDeleted'));
+    },
+    [notify, t],
+  );
+
+  const handleSyncError = useCallback(() => {
+    const now = Date.now();
+    if (now - syncErrorAt.current < 15000) return;
+    syncErrorAt.current = now;
+    notify(t('cloudError'));
+  }, [notify, t]);
+
+  const { registerRemoteGroup } = useCloudSync({
+    groups: state.groups,
+    setState,
+    activeGroupId,
+    onRemoteDelete: handleRemoteDelete,
+    onSyncError: handleSyncError,
+  });
+
   useEffect(() => {
+    const invite = decodeLiveInvite(window.location.hash);
+    if (invite) {
+      void joinLiveGroup(invite);
+      return;
+    }
+
     if (!window.location.hash.startsWith('#g=')) return;
 
     const shared = readShareFromLocation();
@@ -67,6 +107,8 @@ function AppContent({ state, setState }: AppContentProps) {
       setImportFailed(true);
       clearShareHash();
     }
+    // The invite is only read once, when the page first loads.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -82,6 +124,44 @@ function AppContent({ state, setState }: AppContentProps) {
   }, [toast]);
 
   const activeGroup = state.groups.find((group) => group.id === activeGroupId) ?? null;
+
+  async function joinLiveGroup(groupId: string) {
+    clearShareHash();
+
+    if (state.groups.some((group) => group.id === groupId)) {
+      setActiveGroupId(groupId);
+      return;
+    }
+
+    if (!cloudEnabled) {
+      notify(t('cloudJoinError'));
+      return;
+    }
+
+    setJoining(true);
+    try {
+      const result = await fetchCloudGroup(groupId);
+      if (!result || result.deleted) {
+        notify(t('cloudJoinError'));
+        return;
+      }
+
+      registerRemoteGroup(result.group, result.updatedAt);
+      const group: Group = { ...result.group, currentMemberId: null };
+
+      setState((current) =>
+        current.groups.some((candidate) => candidate.id === groupId)
+          ? current
+          : { ...current, groups: [group, ...current.groups] },
+      );
+      setActiveGroupId(groupId);
+      notify(t('cloudJoined'));
+    } catch {
+      notify(t('cloudJoinError'));
+    } finally {
+      setJoining(false);
+    }
+  }
 
   function updateGroup(groupId: string, updater: (group: Group) => Group) {
     setState((current) => ({
@@ -118,12 +198,25 @@ function AppContent({ state, setState }: AppContentProps) {
   }
 
   function handleDeleteGroup() {
-    if (!activeGroupId) return;
+    const groupId = activeGroupId;
+    if (!groupId) return;
+
     setState((current) => ({
       ...current,
-      groups: current.groups.filter((group) => group.id !== activeGroupId),
+      groups: current.groups.filter((group) => group.id !== groupId),
     }));
     setActiveGroupId(null);
+
+    if (cloudEnabled) {
+      void (async () => {
+        try {
+          await removeCloudGroup(groupId);
+          broadcastGroupChanged(groupId);
+        } catch {
+          handleSyncError();
+        }
+      })();
+    }
   }
 
   function handleImport() {
@@ -178,6 +271,18 @@ function AppContent({ state, setState }: AppContentProps) {
         onImport={handleImport}
         onDismiss={dismissImport}
       />
+
+      {joining && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/20 px-6 backdrop-blur-sm">
+          <div className="rounded-3xl bg-white px-8 py-7 text-center shadow-2xl">
+            <div
+              aria-hidden="true"
+              className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-teal-100 border-t-teal-600"
+            />
+            <p className="mt-4 text-sm font-semibold text-slate-700">{t('cloudConnecting')}</p>
+          </div>
+        </div>
+      )}
 
       <Toast message={toast?.message ?? null} />
     </>

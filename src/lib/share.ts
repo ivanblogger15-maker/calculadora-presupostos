@@ -63,7 +63,10 @@ export function readShareFromLocation(): Group | null {
 }
 
 export function clearShareHash(): void {
-  if (window.location.hash.startsWith(HASH_PREFIX)) {
+  if (
+    window.location.hash.startsWith(HASH_PREFIX) ||
+    window.location.hash.startsWith('#join=')
+  ) {
     window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
   }
 }

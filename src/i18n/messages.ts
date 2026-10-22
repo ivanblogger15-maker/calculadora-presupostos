@@ -14,6 +14,14 @@ export const ca = {
   noExpensesYet: 'Sense despeses',
   yourBalance: 'El teu balanç',
   localOnly: 'Les teves dades es queden al navegador. Sense registre ni núvol.',
+  cloudEnabledNote:
+    "Els grups es sincronitzen entre dispositius. Sense registre: comparteix l'enllaç del grup.",
+  cloudConnecting: 'Connectant amb el grup…',
+  cloudJoinError:
+    "No s'ha pogut obrir el grup. Comprova la connexió o demana un enllaç nou.",
+  cloudJoined: 'Grup connectat. Ja podeu afegir despeses entre tots.',
+  cloudDeleted: "Aquest grup s'ha eliminat.",
+  cloudError: "No s'ha pogut sincronitzar. Ho tornarem a provar.",
   footerNote: "Fet per a pisos, viatges i sopars que acaben amb 'ja ho mirem'.",
   balanceTitle: 'El teu balanç',
   owedToYou: 'Et deuen',
@@ -92,6 +100,11 @@ export const ca = {
     "Envia aquest enllaç a la resta del grup. En obrir-lo, podran importar el grup i afegir-hi despeses.",
   shareWarning:
     "L'enllaç és una foto del grup en aquest moment. Per veure els canvis dels altres, haureu de tornar a compartir-lo.",
+  shareTextLive:
+    "Envia aquest enllaç a la resta del grup. En obrir-lo, veuran el grup i tots els canvis al moment.",
+  shareWarningLive:
+    "Sincronització activa: les despeses que afegiu apareixeran a tots els dispositius. No cal tornar a compartir l'enllaç.",
+  shareLive: 'Sincronitzat en temps real',
   importTitle: "T'han compartit un grup",
   importText: 'Vols afegir «{name}» amb {count} membres i {expenses} despeses?',
   importButton: 'Afegeix el grup',
@@ -162,6 +175,14 @@ export const es: Record<MessageKey, string> = {
   noExpensesYet: 'Sin gastos',
   yourBalance: 'Tu balance',
   localOnly: 'Tus datos se quedan en el navegador. Sin registro ni nube.',
+  cloudEnabledNote:
+    'Los grupos se sincronizan entre dispositivos. Sin registro: comparte el enlace del grupo.',
+  cloudConnecting: 'Conectando con el grupo…',
+  cloudJoinError:
+    'No se ha podido abrir el grupo. Comprueba la conexión o pide un enlace nuevo.',
+  cloudJoined: 'Grupo conectado. Ya podéis añadir gastos entre todos.',
+  cloudDeleted: 'Este grupo se ha eliminado.',
+  cloudError: 'No se ha podido sincronizar. Lo volveremos a intentar.',
   footerNote: "Hecho para pisos, viajes y cenas que acaban con 'ya lo miramos'.",
   balanceTitle: 'Tu balance',
   owedToYou: 'Te deben',
@@ -240,6 +261,11 @@ export const es: Record<MessageKey, string> = {
     'Envía este enlace al resto del grupo. Al abrirlo, podrán importar el grupo y añadir gastos.',
   shareWarning:
     'El enlace es una foto del grupo en este momento. Para ver los cambios de los demás, tendréis que volver a compartirlo.',
+  shareTextLive:
+    'Envía este enlace al resto del grupo. Al abrirlo, verán el grupo y todos los cambios al momento.',
+  shareWarningLive:
+    'Sincronización activa: los gastos que añadáis aparecerán en todos los dispositivos. No hace falta volver a compartir el enlace.',
+  shareLive: 'Sincronizado en tiempo real',
   importTitle: 'Te han compartido un grupo',
   importText: '¿Quieres añadir «{name}» con {count} miembros y {expenses} gastos?',
   importButton: 'Añadir el grupo',
@@ -308,6 +334,13 @@ export const en: Record<MessageKey, string> = {
   noExpensesYet: 'No expenses',
   yourBalance: 'Your balance',
   localOnly: 'Your data stays in this browser. No sign-up, no cloud.',
+  cloudEnabledNote:
+    'Groups sync across devices. No sign-up: just share the group link.',
+  cloudConnecting: 'Connecting to the group…',
+  cloudJoinError: 'Could not open the group. Check your connection or ask for a new link.',
+  cloudJoined: 'Group connected. You can all add expenses now.',
+  cloudDeleted: 'This group has been deleted.',
+  cloudError: "Could not sync. We'll try again.",
   footerNote: "Made for flats, trips and dinners that end with 'we'll sort it later'.",
   balanceTitle: 'Your balance',
   owedToYou: 'You are owed',
@@ -386,6 +419,11 @@ export const en: Record<MessageKey, string> = {
     'Send this link to the rest of the group. When they open it, they can import the group and add expenses.',
   shareWarning:
     "The link is a snapshot of the group right now. To see each other's changes, you'll need to share it again.",
+  shareTextLive:
+    "Send this link to the rest of the group. When they open it, they'll see the group and every change instantly.",
+  shareWarningLive:
+    "Live sync is on: expenses you add appear on every device. You don't need to share the link again.",
+  shareLive: 'Synced in real time',
   importTitle: 'A group was shared with you',
   importText: 'Add "{name}" with {count} members and {expenses} expenses?',
   importButton: 'Add group',

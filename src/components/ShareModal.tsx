@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n, useCounts } from '../i18n/I18nProvider';
 import { totalSpentCents } from '../lib/balances';
+import { cloudEnabled } from '../lib/cloud';
 import { formatMoney } from '../lib/money';
 import { shareLink } from '../lib/share';
+import { liveShareLink } from '../lib/sync';
 import type { Group } from '../types';
 import { Avatar } from './Avatar';
 import { CheckIcon, CopyIcon, InfoIcon, ShareIcon } from './Icons';
@@ -20,7 +22,10 @@ export function ShareModal({ open, group, onClose }: ShareModalProps) {
   const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const link = useMemo(() => (open ? shareLink(group) : ''), [open, group]);
+  const link = useMemo(
+    () => (open ? (cloudEnabled ? liveShareLink(group.id) : shareLink(group)) : ''),
+    [open, group],
+  );
 
   useEffect(() => {
     if (open) setCopied(false);
@@ -101,7 +106,16 @@ export function ShareModal({ open, group, onClose }: ShareModalProps) {
           </div>
         </div>
 
-        <p className="text-sm leading-relaxed text-slate-600">{t('shareText')}</p>
+        <p className="text-sm leading-relaxed text-slate-600">
+          {t(cloudEnabled ? 'shareTextLive' : 'shareText')}
+        </p>
+
+        {cloudEnabled && (
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            {t('shareLive')}
+          </div>
+        )}
 
         <div className="flex gap-2">
           <input
@@ -114,9 +128,23 @@ export function ShareModal({ open, group, onClose }: ShareModalProps) {
           />
         </div>
 
-        <div className="flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-3.5 py-3">
-          <InfoIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-          <p className="text-xs leading-relaxed text-amber-800">{t('shareWarning')}</p>
+        <div
+          className={`flex items-start gap-2.5 rounded-2xl border px-3.5 py-3 ${
+            cloudEnabled ? 'border-teal-200 bg-teal-50' : 'border-amber-200 bg-amber-50'
+          }`}
+        >
+          <InfoIcon
+            className={`mt-0.5 h-4 w-4 shrink-0 ${
+              cloudEnabled ? 'text-teal-600' : 'text-amber-600'
+            }`}
+          />
+          <p
+            className={`text-xs leading-relaxed ${
+              cloudEnabled ? 'text-teal-800' : 'text-amber-800'
+            }`}
+          >
+            {t(cloudEnabled ? 'shareWarningLive' : 'shareWarning')}
+          </p>
         </div>
       </div>
     </Modal>
